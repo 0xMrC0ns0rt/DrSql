@@ -14,7 +14,7 @@ You can develop this resource and add your credits to this work, but never remov
 */
 session_start();
 #CONFIGURATION\
-$directBlock = 'on'; //on or off: this will block the request and end all processes once an injection try is detected.
+$_SESSION['directBlock'] = 'on'; //on or off: this will block the request and end all processes once an injection try is detected.
 $checkWithoutRequire = 'on'; //on or off: this will always check for user's submits even without calling the check function.
 //check if there're any tries to inject on string
 function omCheckForInject($string){
@@ -54,7 +54,8 @@ function omPostCheck(){
 	}
 	return $_omTries['post'];
 }
-function omCheck($directBlock,$get,$post){
+function omCheck($get,$post){
+	$directBlock = $_SESSION['directBlock'];
 	switch ($get){
 		case 0:
 			$cg = array();
@@ -86,6 +87,7 @@ function omCheck($directBlock,$get,$post){
 	}
 
 if(strtolower($checkWithoutRequire) == 'on'){
+	$directBlock = $_SESSION['directBlock'];
 	omCheck($directBlock,1,1);
 }
 ?>
