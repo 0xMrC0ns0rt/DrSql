@@ -16,7 +16,67 @@ session_start();
 #CONFIGURATION\
 $_SESSION['directBlock'] = 'on'; //on or off: this will block the request and end all processes once an injection try is detected.
 $checkWithoutRequire = 'on'; //on or off: this will always check for user's submits even without calling the check function.
-//check if there're any tries to inject on string
+$cloudjetFirewall = 'on'; //on or off: this option enables the Cloudjet Firewall to prevent bots from accessing your server.
+$_SESSION['cloudjetApiKey'] = 'CLOUDJET_APIKEY_XXXXXXXXXX'; //your Cloudjet Firewall API key, only required if you've enabled CloudjetFirewall option.
+$_SESSION['cloudjetBlockMsg'] = 'You do not have access to this page.'; //the message to be displayed to blocked users by Cloudjet Firewall.
+$_SESSION['logBannedBots'] = 'on'; //on or off: this will log all banned bots in banned.txt file.
+
+function omCloudjetFirewallCheck($ip){
+$apikey = $_SESSION['cloudjetApiKey'];
+$url = "https://apis.cloudjet.org/firewall.php?apikey={$apikey}&ip={$ip}";
+$curl = curl_init();
+
+curl_setopt_array($curl, [
+  CURLOPT_URL => $url,
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_FOLLOWLOCATION => true,
+  CURLOPT_ENCODING => "",
+  CURLOPT_MAXREDIRS => 10,
+  CURLOPT_TIMEOUT => 30,
+  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+  CURLOPT_CUSTOMREQUEST => "GET",
+  CURLOPT_HTTPHEADER => [
+    "cache-control: no-cache"
+  ],
+]);
+
+$response = curl_exec($curl);
+$err = curl_error($curl);
+
+curl_close($curl);
+
+
+
+if(json_decode($response)->status == "error"){
+    echo json_decode($response)->message;exit;
+    
+}
+else{
+    if(json_decode($response)->isbot == "yes"){
+      if($_SESSION['logBannedBots'] == 'on'){
+        
+$filename = 'banned.txt';
+$line_to_add = 'Bot: '.$ip;
+
+if (file_exists($filename)) {
+
+    $file = fopen($filename, 'a');
+    fwrite($file, $line_to_add . "\n");
+    fclose($file);
+} else {
+   
+    $file = fopen($filename, 'w');
+    fwrite($file, $line_to_add . "\n");
+    fclose($file);
+}
+
+      }
+  echo $_SESSION['cloudjetBlockMsg'];exit;
+    
+}
+}
+
+}
 function omCheckForInject($string){
 	if (strpos($string, "'") !== false || strpos($string, '"') !== false) {
 		return 1;
@@ -85,7 +145,10 @@ function omCheck($get,$post){
 		return $result;
 	}
 	}
-
+if(strtolower($cloudjetFirewall) == 'on'){
+  $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  omCloudjetFirewallCheck($ip);
+}
 if(strtolower($checkWithoutRequire) == 'on'){
 	$directBlock = $_SESSION['directBlock'];
 	omCheck($directBlock,1,1);
